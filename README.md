@@ -22,11 +22,14 @@ $ gcc memtest.c -o memtest
 ## Output example
 
 ~~~
-PID: 332379
+$ ./memtest 2
+PID: 332417
 
-Initial process memory: 1.54 MiB
-Target process memory:  20.00 MiB
+Initial process memory: 1.51 MiB
+Target process memory:  2.00 MiB
 ---------------
-Allocating memory until at least 20.00 MiB...
-Approximate memory consumed by the process in total: 20.04 MiB
+Allocating memory until at least 2.00 MiB...
+Approximate memory consumed by the process in total: 2.01 MiB
+^C
+$
 ~~~

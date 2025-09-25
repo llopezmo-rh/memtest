@@ -4,7 +4,7 @@
 
 Small C program for GNU/Linux to test memory allocation. Useful to test container performance and Kubernetes settings like limits.
 
-An **intiger** amount of MiB must be provided as an argument and it tries to allocate an amount of memory as near the one provided as possible. According to the tests, it uses to allocate a bit more, but rarely above 5% over the value requested.
+An **intiger** amount of MiB must be provided as an argument and it tries to allocate an amount of memory as near the one provided as possible. According to the tests, it uses to allocate a bit more, but it has always been less than 1% above the value requested.
 
 ~~~
 $ memtest
@@ -22,13 +22,11 @@ $ gcc memtest.c -o memtest
 ## Output example
 
 ~~~
-$ memtest.py 20
-The base memory used by this script is 13.57 MiB.
-Reserving additional memory until approximately 20 MiB are used..
+PID: 332379
 
-Process ID: 275742
-Approximate memory used by this process in total: 20.70 MiB
-
-^C
-Finishing because the process was manually interrupted from the keyboard
+Initial process memory: 1.54 MiB
+Target process memory:  20.00 MiB
+---------------
+Allocating memory until at least 20.00 MiB...
+Approximate memory consumed by the process in total: 20.04 MiB
 ~~~

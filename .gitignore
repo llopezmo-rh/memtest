@@ -1,0 +1,9 @@
+# Ignore object files
+*.o
+
+# Ignore binary file
+memtest
+
+# Ignore temporary or system files
+.DS_Store
+*~

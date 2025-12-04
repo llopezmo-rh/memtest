@@ -13,6 +13,7 @@
 
 #include <errno.h>
 #include <limits.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,6 +23,33 @@
 #define ANY_CHAR 'x'
 #define MIB_TO_BYTES 1048576
 
+// Global variable to detect whether a signal is received and also which one
+volatile sig_atomic_t received_signal = 0;
+
+
+// This program executes pause() at the end and it is designed to be finished
+// by sending a SIGTERM (command "kill", Kubernetes...) or a SIGINT (Control+C) 
+// signal.
+//
+// The process will NOT be directly terminated if those signals are received.
+// Instead, this is what will happen:
+// 1. pause() will be automatically interrupted, which will make possible the
+// process termination.
+// 2. Due to a condition in the while loop, the memory reservation will be
+// interrupted. This will accelerate the process termination, although not
+// directly because of the signal, but because it will reach its own end.
+//
+// The function handle_signal simply keeps the signal received into the 
+// global sig_atomic_t variable. Then the process will continue.
+//
+// The purposes of this approach are the following:
+// 1. Return an exit code instead of the default error code if the signals
+// are received.
+// 2. Report the signal received.
+void handle_signal(int sig)
+    {
+    received_signal = sig;
+    }
 
 // Helper function to safely parse the input argument
 static int parse_arguments(double* input_mib, const char *arg)
@@ -117,11 +145,21 @@ static size_t get_current_rss()
 
 int main(int argc, char *argv[]) 
 	{
+	struct sigaction sa;
 	int ok;
 	pid_t pid;
 	size_t target_bytes, current_bytes, page_size;
 	double target_mib, current_mib;
 	char* memory_hog;
+
+	// Signal handling setup
+	// Clear structure
+	memset(&sa, 0, sizeof(sa));
+	// Assign handling function
+	sa.sa_handler = handle_signal;
+	// Apply to SIGINT (Ctrl+C) and SIGTERM (Kubernetes termination)
+	sigaction(SIGINT, &sa, NULL);
+	sigaction(SIGTERM, &sa, NULL);
 
 	// Check and parse argument
 	if (argc != 2)
@@ -167,8 +205,15 @@ int main(int argc, char *argv[])
 	// in order to reduce the memory excess over the target wanted.
 	// page_size is also multiplied by 10 to make this reduction even greater
 	// and get as near the target value as possible, although it is just a
-	// rough approximation
-	while(get_current_rss() < (target_bytes - (page_size * 10)))
+	// rough approximation.
+	//
+	// If one of the configured signals is received, the process will continue
+	// because our handling function does not terminate it. However, it is not
+	// wanted that this memory reservation loop continues. Therefore, if a
+	// signal is received, it will be finished. If the signal is received 
+	// previously, the loop will not even start.
+	while(received_signal == 0 &&
+		get_current_rss() < (target_bytes - (page_size * 10)))
 		{
 		// This memory will be freed automatically by the operating system
 		// once the process finished. In case the code is edited and freeing
@@ -190,9 +235,16 @@ int main(int argc, char *argv[])
 	current_mib = (double)current_bytes / MIB_TO_BYTES;
 	printf("Approximate memory consumed by the process in total: %.2f MiB\n",
 		current_mib);
+	printf("Waiting for signal SIGINT or SIGTERM...\n");
 	
 	// Pause the process
 	pause();
+
+	// Final message reporting the signal received
+	if (received_signal == SIGINT)
+		fprintf(stderr, "Signal SIGINT received. Exiting...\n");
+	else if (received_signal == SIGTERM)
+		fprintf(stderr, "Signal SIGTERM received. Exiting...\n");
 
 	return 0;
 	}

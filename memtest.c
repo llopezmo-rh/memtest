@@ -108,7 +108,7 @@ static size_t get_current_rss()
     if (!file) 
 		{
         perror("Could not open /proc/self/statm");
-        return -1;
+        return 0;
     	}
 
     long int rss_pages = 0;
@@ -119,7 +119,7 @@ static size_t get_current_rss()
 		{
         perror("Could not parse /proc/self/statm");
 		fclose(file);
-        return -1;
+        return 0;
     	}
 
     // Close file
@@ -127,7 +127,7 @@ static size_t get_current_rss()
 	if (ok != 0)
 		{
 		fprintf(stderr, "Error closing file\n");
-		return -1;
+		return 0;
 		}
 	
     // Get the system's page size and convert pages to bytes.
@@ -135,7 +135,7 @@ static size_t get_current_rss()
 	if (page_size == -1)
 		{
 		fprintf(stderr, "Error accessing the system configuration\n");
-		return -1;
+		return 0;
 		}
 
 	// Return the number of pages multiplied by the page size in bytes
@@ -176,6 +176,7 @@ int main(int argc, char *argv[])
 
 	// Calculate memmory to allocate
 	current_bytes = get_current_rss();
+	if (current_bytes == 0) return 1;
 	current_mib = (double)current_bytes / MIB_TO_BYTES;
 	printf("Initial process memory: %.2f MiB\n", current_mib);
 	printf("Target process memory:  %.2f MiB\n", target_mib);
@@ -212,6 +213,8 @@ int main(int argc, char *argv[])
 	while(received_signal == 0 &&
 		get_current_rss() < (target_bytes - (page_size * 10)))
 		{
+		// If current_bytes == 0, it is because get_current_rss failed
+		if (current_bytes == 0) return 1;
 		// This memory will be freed automatically by the operating system
 		// once the process finished. In case the code is edited and freeing
 		// the memory manually becomes a requirement for any reason, the
@@ -229,6 +232,7 @@ int main(int argc, char *argv[])
 
 	// Print information
 	current_bytes = get_current_rss();
+	if (current_bytes == 0) return 1;
 	current_mib = (double)current_bytes / MIB_TO_BYTES;
 	printf("Approximate memory consumed by the process in total: %.2f MiB\n",
 		current_mib);

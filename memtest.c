@@ -46,7 +46,7 @@ volatile sig_atomic_t received_signal = 0;
 // 1. Return an exit code instead of the default error code if the signals
 // are received.
 // 2. Report the signal received.
-void handle_signal(int sig)
+static void handle_signal(int sig)
     {
     received_signal = sig;
     }

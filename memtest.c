@@ -25,7 +25,7 @@
 
 
 // Return value unit: bytes
-static unsigned long long int get_current_rss() 
+static long int get_current_rss() 
 	{
 	// Open the virtual file which hosts the information
     FILE* file = fopen("/proc/self/statm", "r");
@@ -35,7 +35,7 @@ static unsigned long long int get_current_rss()
         return 0;
     	}
 
-    unsigned long long int rss_pages = 0;
+    long int rss_pages = 0;
     // The second value in the file is the RSS in pages.
     // "%*ld" used to read and discard the first value (total size).
     if (fscanf(file, "%*ld %ld", &rss_pages) != 1) 
@@ -49,14 +49,14 @@ static unsigned long long int get_current_rss()
 	assert(fclose(file) == 0);
 	
     // Get the system's page size and convert pages to bytes.
-    unsigned long long int page_size = sysconf(_SC_PAGESIZE);
+    long int page_size = sysconf(_SC_PAGESIZE);
 	return rss_pages * page_size;
-}
+	}
 
 int main(int argc, char *argv[]) 
 	{
 	pid_t pid;
-	unsigned long long int target_bytes, current_bytes, page_size;
+	long int target_bytes, current_bytes, page_size;
 	double target_mib, current_mib;
 	char* memory_hog;
 	// Check arguments
@@ -66,18 +66,12 @@ int main(int argc, char *argv[])
 		return 1;
 		}
 	// Convert to bytes
-	target_bytes = strtoull(argv[1], NULL, 10) * MIB_TO_BYTES;
+	target_bytes = strtol(argv[1], NULL, 10) * MIB_TO_BYTES;
 	target_mib = (double)target_bytes / MIB_TO_BYTES;
-	if (target_bytes == 0 || target_bytes == ULLONG_MAX)
-		{
-		fprintf(stderr, "Argument \"%s\" not valid\n", argv[1]);
-		fprintf(stderr, "Use: %s <amount_of_MiB>\n", argv[0]);
-		return 1;
-		}
 	
 	// Print process ID
 	pid = getpid();
-	printf("PID: %llu\n\n", pid);
+	printf("PID: %ld\n\n", pid);
 
 	// Calculate memmory to allocate
 	current_bytes = get_current_rss();
@@ -115,10 +109,10 @@ int main(int argc, char *argv[])
 		// the memory manually becomes a requirement for any reason, the
 		// solution would be to create a memory data structure like a list
 		// to store the memory_hog pointers and free them one by one at the end.
-		memory_hog = (char*)malloc(page_size);
+		memory_hog = (char*)malloc((size_t)page_size);
 		assert(memory_hog != NULL);
 		// The memory is not allocated by malloc. memset required
-		memset(memory_hog, ANY_CHAR, page_size);
+		memset(memory_hog, ANY_CHAR, (size_t)page_size);
 		}
 
 	// Print information

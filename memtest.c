@@ -11,12 +11,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-
+#include <assert.h>
+#include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <limits.h>
-#include <assert.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -24,49 +24,117 @@
 #define MIB_TO_BYTES 1048576
 
 
+// Helper function to safely parse the input argument
+static int parse_arguments(long int* input_mib, const char *arg)
+	{
+	char *endptr;
+	long int val;
+
+	// Reset errno before calling strtol
+	errno = 0;
+	*input_mib = strtol(arg, &endptr, 10);
+
+	// If the number is out of range, strtol returns either LONG_MAX or
+	// LONG_MIN and sets errno to ERANGE
+	if ((errno == ERANGE && (*input_mib == LONG_MAX || *input_mib == LONG_MIN)))
+		{
+		perror("strtol: number out of long int range\n");
+		return -1;
+		}
+	
+	// Other strtol errors 
+	if (errno != 0 && *input_mib == 0)
+		{
+		perror("strtol error\n");
+		return -1;
+		}
+	
+	// No number
+	if (endptr == arg) 
+		{
+		fprintf(stderr, "Error: no number in argument.\n");
+		return -1;
+		}
+
+	// Non-numerical characters
+	if (*endptr != '\0')
+		{
+		fprintf(stderr, "Invalid characters in argument: \"%s\"\n", endptr);
+		return -1;
+		}
+
+	// Negative value
+	if (*input_mib <= 0)
+		{
+		fprintf(stderr, "Memory amount must be a positive integer.\n");
+		return -1;
+		}
+
+	return 0;
+	}
+
 // Return value unit: bytes
 static long int get_current_rss() 
 	{
+	int ok;
 	// Open the virtual file which hosts the information
     FILE* file = fopen("/proc/self/statm", "r");
     if (!file) 
 		{
         perror("Could not open /proc/self/statm");
-        return 0;
+        return -1;
     	}
 
     long int rss_pages = 0;
     // The second value in the file is the RSS in pages.
     // "%*ld" used to read and discard the first value (total size).
-    if (fscanf(file, "%*ld %ld", &rss_pages) != 1) 
+	ok = fscanf(file, "%*ld %ld", &rss_pages);
+	if (ok != 1)
 		{
         perror("Could not parse /proc/self/statm");
 		assert(fclose(file) == 0);
-        return 0;
+        return -1;
     	}
 
     // Close file
-	assert(fclose(file) == 0);
+	ok = fclose(file);
+	if (ok != 0)
+		{
+		fprintf(stderr, "Error closing file\n");
+		return -1;
+		}
 	
     // Get the system's page size and convert pages to bytes.
     long int page_size = sysconf(_SC_PAGESIZE);
+	if (page_size == -1)
+		{
+		fprintf(stderr, "Error accessing the system configuration\n");
+		return -1;
+		}
+
+	// Return the number of pages multiplied by the page size in bytes
 	return rss_pages * page_size;
 	}
 
 int main(int argc, char *argv[]) 
 	{
+	int ok;
 	pid_t pid;
-	long int target_bytes, current_bytes, page_size;
+	long int target_bytes, current_bytes, page_size, input_mib;
 	double target_mib, current_mib;
 	char* memory_hog;
-	// Check arguments
+
+	// Check and parse argument
 	if (argc != 2)
 		{
 		fprintf(stderr, "Use: %s <amount_of_MiB>\n", argv[0]);
 		return 1;
 		}
+	ok = parse_arguments(&input_mib, argv[1]);
+	if (ok != 0) return 1;
+	
 	// Convert to bytes
-	target_bytes = strtol(argv[1], NULL, 10) * MIB_TO_BYTES;
+	target_bytes = input_mib * MIB_TO_BYTES;
 	target_mib = (double)target_bytes / MIB_TO_BYTES;
 	
 	// Print process ID

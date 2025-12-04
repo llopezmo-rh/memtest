@@ -11,7 +11,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#include <assert.h>
 #include <errno.h>
 #include <limits.h>
 #include <stdio.h>
@@ -92,7 +91,7 @@ static size_t get_current_rss()
 	if (ok != 1)
 		{
         perror("Could not parse /proc/self/statm");
-		assert(fclose(file) == 0);
+		fclose(file);
         return -1;
     	}
 
@@ -177,7 +176,11 @@ int main(int argc, char *argv[])
 		// solution would be to create a memory data structure like a list
 		// to store the memory_hog pointers and free them one by one at the end.
 		memory_hog = (char*)malloc((size_t)page_size);
-		assert(memory_hog != NULL);
+		if (memory_hog == NULL)
+			{
+			fprintf(stderr, "Error allocating memory with malloc\n");
+			return 1;
+			}
 		// The memory is not allocated by malloc. memset required
 		memset(memory_hog, ANY_CHAR, (size_t)page_size);
 		}

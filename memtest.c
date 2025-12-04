@@ -33,7 +33,7 @@ volatile sig_atomic_t received_signal = 0;
 //
 // The process will NOT be directly terminated if those signals are received.
 // Instead, this is what will happen:
-// 1. pause() will be automatically interrupted, which will make possible the
+// 1. pause() will be interrupted, which will make possible the
 // process termination.
 // 2. Due to a condition in the while loop, the memory reservation will be
 // interrupted. This will accelerate the process termination, although not
@@ -235,7 +235,13 @@ int main(int argc, char *argv[])
 	printf("Waiting for signal SIGINT or SIGTERM...\n");
 	
 	// Pause the process
-	pause();
+	// It is a loop instead to protect the process in case other signals are 
+	// handled in the future and in a different way. Also, to prevent the
+	// process from executing the loop if the signal is received previously
+	while (received_signal == 0)
+		{
+		pause();
+		}
 
 	// Final message reporting the signal received
 	if (received_signal == SIGINT)

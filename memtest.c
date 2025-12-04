@@ -25,27 +25,27 @@
 
 
 // Helper function to safely parse the input argument
-static int parse_arguments(long int* input_mib, const char *arg)
+static int parse_arguments(double* input_mib, const char *arg)
 	{
 	char *endptr;
 	long int val;
 
 	// Reset errno before calling strtol
 	errno = 0;
-	*input_mib = strtol(arg, &endptr, 10);
+	*input_mib = strtod(arg, &endptr);
 
 	// If the number is out of range, strtol returns either LONG_MAX or
 	// LONG_MIN and sets errno to ERANGE
-	if ((errno == ERANGE && (*input_mib == LONG_MAX || *input_mib == LONG_MIN)))
+	if (errno == ERANGE)
 		{
-		perror("strtol: number out of long int range\n");
+		perror("strtod: number out of double type range\n");
 		return -1;
 		}
 	
 	// Other strtol errors 
 	if (errno != 0 && *input_mib == 0)
 		{
-		perror("strtol error\n");
+		perror("strtod error\n");
 		return -1;
 		}
 	
@@ -64,7 +64,7 @@ static int parse_arguments(long int* input_mib, const char *arg)
 		}
 
 	// Negative value
-	if (*input_mib <= 0)
+	if (*input_mib <= 0.0)
 		{
 		fprintf(stderr, "Memory amount must be a positive integer.\n");
 		return -1;
@@ -74,7 +74,7 @@ static int parse_arguments(long int* input_mib, const char *arg)
 	}
 
 // Return value unit: bytes
-static long int get_current_rss() 
+static size_t get_current_rss() 
 	{
 	int ok;
 	// Open the virtual file which hosts the information
@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
 	{
 	int ok;
 	pid_t pid;
-	long int target_bytes, current_bytes, page_size, input_mib;
+	size_t target_bytes, current_bytes, page_size;
 	double target_mib, current_mib;
 	char* memory_hog;
 
@@ -130,12 +130,11 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Use: %s <amount_of_MiB>\n", argv[0]);
 		return 1;
 		}
-	ok = parse_arguments(&input_mib, argv[1]);
+	ok = parse_arguments(&target_mib, argv[1]);
 	if (ok != 0) return 1;
 	
 	// Convert to bytes
-	target_bytes = input_mib * MIB_TO_BYTES;
-	target_mib = (double)target_bytes / MIB_TO_BYTES;
+	target_bytes = (size_t)(target_mib * MIB_TO_BYTES);
 	
 	// Print process ID
 	pid = getpid();

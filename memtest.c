@@ -25,7 +25,7 @@
 
 
 // Return value unit: bytes
-unsigned long long int get_current_rss() 
+static unsigned long long int get_current_rss() 
 	{
 	// Open the virtual file which hosts the information
     FILE* file = fopen("/proc/self/statm", "r");

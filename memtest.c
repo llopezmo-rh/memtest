@@ -55,7 +55,6 @@ void handle_signal(int sig)
 static int parse_arguments(double* input_mib, const char *arg)
 	{
 	char *endptr;
-	long int val;
 
 	// Reset errno before calling strtol
 	errno = 0;
@@ -115,7 +114,7 @@ static size_t get_current_rss()
     long int rss_pages = 0;
     // The second value in the file is the RSS in pages.
     // "%*ld" used to read and discard the first value (total size).
-	ok = fscanf(file, "%*ld %ld", &rss_pages);
+	ok = fscanf(file, "%*d %ld", &rss_pages);
 	if (ok != 1)
 		{
         perror("Could not parse /proc/self/statm");
@@ -147,7 +146,6 @@ int main(int argc, char *argv[])
 	{
 	struct sigaction sa;
 	int ok;
-	pid_t pid;
 	size_t target_bytes, current_bytes, page_size;
 	double target_mib, current_mib;
 	char* memory_hog;
@@ -174,8 +172,7 @@ int main(int argc, char *argv[])
 	target_bytes = (size_t)(target_mib * MIB_TO_BYTES);
 	
 	// Print process ID
-	pid = getpid();
-	printf("PID: %ld\n\n", pid);
+	printf("PID: %d\n\n", getpid());
 
 	// Calculate memmory to allocate
 	current_bytes = get_current_rss();

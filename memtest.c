@@ -220,7 +220,7 @@ int main(int argc, char *argv[])
 	target_bytes = (size_t)(target_mib * MIB_TO_BYTES);
 	
 	// Print process ID
-	printf("PID: %d\n\n", getpid());
+	printf("PID: %d\n\n", (int)getpid());
 
 	// Calculate memmory to allocate
 	current_bytes = get_current_rss();
@@ -261,8 +261,6 @@ int main(int argc, char *argv[])
 	while(received_signal == 0 &&
 		get_current_rss() < (target_bytes - (page_size * 10)))
 		{
-		// If current_bytes == 0, it is because get_current_rss failed
-		if (current_bytes == 0) return 1;
 		// This memory will be freed automatically by the operating system
 		// once the process finished. In case the code is edited and freeing
 		// the memory manually becomes a requirement for any reason, the

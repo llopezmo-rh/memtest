@@ -34,7 +34,7 @@
 
 
 // Global variable to detect whether a signal is received and also which one
-volatile sig_atomic_t received_signal = 0;
+static volatile sig_atomic_t received_signal = 0;
 
 
 static void print_use(const char* executable_file_name)

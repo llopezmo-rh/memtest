@@ -22,10 +22,32 @@
 
 #define ANY_CHAR 'x'
 #define MIB_TO_BYTES 1048576
+// The main use case for this piece of software is to execute it from inside a
+// container in order to test settings like memory limits for Kubernetes,
+// Podman, Docker... Therefore, the MiB to be consumed can be provided through
+// an argument or an environment variable, having the earlier a higher order
+// of precedence.
+//
+// The following constant stores the name of the environment variable used,
+// if any.
+#define TARGET_MIB_ENV_VARIABLE "TARGET_MIB"
+
 
 // Global variable to detect whether a signal is received and also which one
 volatile sig_atomic_t received_signal = 0;
 
+
+static void print_use(const char* executable_file_name)
+	{
+	fprintf
+		(
+		stderr,
+		"Usage: %s [<amount_of_MiB>]\n"
+		"Without argument, use the environment variable %s\n",
+		executable_file_name,
+		TARGET_MIB_ENV_VARIABLE
+		);
+	}
 
 // This program executes pause() at the end and it is designed to be finished
 // by sending a SIGTERM (command "kill", Kubernetes...) or a SIGINT (Control+C) 
@@ -55,6 +77,13 @@ static void handle_signal(int sig)
 static int parse_arguments(double* input_mib, const char *arg)
 	{
 	char *endptr;
+
+	// Check whether arg is NULL
+	if (arg == NULL)
+		{
+		fprintf(stderr, "No argument provided.\n");
+		return -1;
+		}
 
 	// Reset errno before calling strtol
 	errno = 0;
@@ -148,7 +177,7 @@ int main(int argc, char *argv[])
 	int ok;
 	size_t target_bytes, current_bytes, page_size;
 	double target_mib, current_mib;
-	char* memory_hog;
+	char *memory_hog, *input_arg;
 
 	// Signal handling setup
 	// Clear structure
@@ -159,13 +188,32 @@ int main(int argc, char *argv[])
 	sigaction(SIGINT, &sa, NULL);
 	sigaction(SIGTERM, &sa, NULL);
 
-	// Check and parse argument
-	if (argc != 2)
+	// Check and parse target MiB
+	// An eventual argument has a higher priority than the environment variable
+	input_arg = NULL;
+	if (argc == 2)
 		{
-		fprintf(stderr, "Use: %s <amount_of_MiB>\n", argv[0]);
+		input_arg = argv[1];
+		}
+	else if (argc == 1)
+		{
+		input_arg = getenv(TARGET_MIB_ENV_VARIABLE);
+		}
+	else
+		{
+		print_use(argv[0]);
 		return 1;
 		}
-	ok = parse_arguments(&target_mib, argv[1]);
+	// Although parse_arguments already checks whether input_arg is NULL, doing
+	// it here to in order to make it more robust, and also to make easier the
+	// use of the argument of print_use
+	if (input_arg == NULL)
+		{
+		fprintf(stderr, "No argument provided.\n");
+		print_use(argv[0]);
+		return 1;
+		}
+	ok = parse_arguments(&target_mib, input_arg);
 	if (ok != 0) return 1;
 	
 	// Convert to bytes

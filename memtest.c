@@ -85,19 +85,19 @@ static int parse_arguments(double* input_mib, const char *arg)
 		return -1;
 		}
 
-	// Reset errno before calling strtol
+	// Reset errno and call strtod
 	errno = 0;
 	*input_mib = strtod(arg, &endptr);
 
-	// If the number is out of range, strtol returns either LONG_MAX or
-	// LONG_MIN and sets errno to ERANGE
+	// If the number is out of range, strtod returns +-HUGE_VAL and sets
+	// errno to ERANGE
 	if (errno == ERANGE)
 		{
 		perror("strtod: number out of double type range\n");
 		return -1;
 		}
 	
-	// Other strtol errors 
+	// Other strtod errors 
 	if (errno != 0 && *input_mib == 0)
 		{
 		perror("strtod error\n");
@@ -121,7 +121,7 @@ static int parse_arguments(double* input_mib, const char *arg)
 	// Negative value
 	if (*input_mib <= 0.0)
 		{
-		fprintf(stderr, "Memory amount must be a positive integer.\n");
+		fprintf(stderr, "Memory amount must be positive.\n");
 		return -1;
 		}
 

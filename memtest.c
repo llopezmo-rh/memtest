@@ -168,7 +168,7 @@ static size_t get_current_rss()
 		}
 
 	// Return the number of pages multiplied by the page size in bytes
-	return rss_pages * page_size;
+	return (size_t)rss_pages * (size_t)page_size;
 	}
 
 int main(int argc, char *argv[]) 
